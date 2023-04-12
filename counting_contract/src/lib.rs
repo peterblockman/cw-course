@@ -1,5 +1,5 @@
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, Empty, StdResult, entry_point, Deps, Binary, to_binary};
-use crate::msg::InstantiateMsg;
+use crate::msg::{ExecMsg, InstantiateMsg};
 use crate::state::COUNTER;
 
 
@@ -20,12 +20,18 @@ pub fn instantiate(
 
 #[entry_point]
 pub fn execute(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
-    _msg: Empty
+    info: MessageInfo,
+    msg: ExecMsg
 ) -> StdResult<Response> {
-    Ok(Response::new())
+    use crate::msg::ExecMsg::*;
+    use crate::contract::exec;
+
+    match  msg {
+        Poke {} => exec::poke(deps, info),
+        Reset {} => exec::reset(deps, info)
+    }
 }
 
 #[entry_point]
@@ -48,7 +54,7 @@ mod test {
     use cosmwasm_std::{Empty, Addr, entry_point};
     use cw_multi_test::{App, ContractWrapper, Contract, Executor};
     use crate::{execute, instantiate, query};
-    use crate::msg::{InstantiateMsg, QueryMsg, ValueResp};
+    use crate::msg::{ExecMsg, InstantiateMsg, QueryMsg, ValueResp};
 
     fn counting_contract() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(execute, instantiate, query);
@@ -98,6 +104,83 @@ mod test {
             .unwrap();
 
         assert_eq!(resp, ValueResp { value: 2 });
+    }
+
+    #[test]
+    fn poke() {
+        let mut app = App::default();
+
+        let contract_id = app.store_code(counting_contract());
+
+        let contract_addr = app
+            .instantiate_contract(
+                contract_id,
+                Addr::unchecked("sender"),
+                &InstantiateMsg{ counter: 0 },
+                &[],
+                "Counting contract",
+                None, // admin
+            )
+            .unwrap();
+
+        app.execute_contract(
+            Addr::unchecked("sender"),
+            contract_addr.clone(), // clone here so that it can be used below
+            &ExecMsg::Poke {},
+            &[],
+        ).unwrap();
+
+        let resp: ValueResp = app
+            .wrap()
+            .query_wasm_smart(contract_addr, &QueryMsg::Value {})
+            .unwrap();
+
+        assert_eq!(resp, ValueResp { value: 1 });
+    }
+
+    #[test]
+    pub fn reset() {
+        let mut app =  App::default();
+
+        let contract_id = app.store_code(counting_contract());
+        let contract_addr = app
+            .instantiate_contract(
+                contract_id,
+                Addr::unchecked("sender"),
+                &InstantiateMsg{ counter: 0 },
+                &[],
+                "Counting contract",
+                None, // admin
+            )
+            .unwrap();
+
+        app.execute_contract(
+            Addr::unchecked("sender"),
+            contract_addr.clone(), // clone here so that it can be used below
+            &ExecMsg::Poke {},
+            &[],
+        ).unwrap();
+
+        let poke_resp: ValueResp = app
+            .wrap()
+            .query_wasm_smart(contract_addr.clone(), &QueryMsg::Value {})
+            .unwrap();
+
+        assert_eq!(poke_resp, ValueResp { value: 1 });
+
+        app.execute_contract(
+            Addr::unchecked("sender"),
+            contract_addr.clone(), // clone here so that it can be used below
+            &ExecMsg::Reset {},
+            &[],
+        ).unwrap();
+
+        let resp: ValueResp = app
+            .wrap()
+            .query_wasm_smart(contract_addr, &QueryMsg::Value {})
+            .unwrap();
+
+        assert_eq!(resp, ValueResp { value: 0 });
     }
 }
 
