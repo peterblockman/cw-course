@@ -1,17 +1,20 @@
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, Empty, StdResult, entry_point, Deps, Binary, to_binary};
+use crate::msg::InstantiateMsg;
+use crate::state::COUNTER;
 
 
 mod contract;
 pub mod msg;
+mod state;
 
 #[entry_point]
 pub fn instantiate(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _msg: Empty,
+    msg: InstantiateMsg,
 ) -> StdResult<Response>{
-    Ok(Response::new())
+    contract::instantiate(deps, msg.counter)
 }
 
 
@@ -27,7 +30,7 @@ pub fn execute(
 
 #[entry_point]
 pub fn query(
-    _deps: Deps,
+    deps: Deps,
     _env: Env,
     msg: msg::QueryMsg
 ) -> StdResult<Binary> {
@@ -35,17 +38,17 @@ pub fn query(
     use contract::query;
 
     match msg {
-        Value {} => to_binary(&query::value()),
+        Value {} => to_binary(&query::value(deps)?),
         Incremented { value } => to_binary(&query::incremented(value))
     }
 }
 
 #[cfg(test)]
 mod test {
-    use cosmwasm_std::{Empty, Addr};
+    use cosmwasm_std::{Empty, Addr, entry_point};
     use cw_multi_test::{App, ContractWrapper, Contract, Executor};
     use crate::{execute, instantiate, query};
-    use crate::msg::{QueryMsg, ValueResp};
+    use crate::msg::{InstantiateMsg, QueryMsg, ValueResp};
 
     fn counting_contract() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(execute, instantiate, query);
@@ -60,7 +63,7 @@ mod test {
         let contract_addr = app.instantiate_contract(
             contract_id,
             Addr::unchecked("sender"), // create and address without validating it
-            &Empty {},
+            &InstantiateMsg { counter: 1 },
             &[],
             "Counting contract",
             None, // admin
@@ -71,7 +74,7 @@ mod test {
             .query_wasm_smart(contract_addr, &QueryMsg::Value {})
             .unwrap();
 
-        assert_eq!(resp, ValueResp { value: 0 });
+        assert_eq!(resp, ValueResp { value: 1 });
     }
 
     #[test]
@@ -83,7 +86,7 @@ mod test {
         let contract_addr = app.instantiate_contract(
             contract_id,
             Addr::unchecked("sender"), // create and address without validating it
-            &Empty {},
+            &InstantiateMsg { counter: 1 },
             &[],
             "Counting contract",
             None, // admin
