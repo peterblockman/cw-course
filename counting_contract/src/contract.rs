@@ -1,9 +1,10 @@
-use cosmwasm_std::{Deps, DepsMut, Response, StdResult};
+use cosmwasm_std::{Coin, Deps, DepsMut, Response, StdResult};
 use crate::msg::ValueResp;
-use crate::state::COUNTER;
+use crate::state::{COUNTER, MINIMAL_DONATION};
 
-pub fn instantiate (deps: DepsMut, counter: u64) -> StdResult<Response> {
+pub fn instantiate (deps: DepsMut, counter: u64, minimal_donation: Coin) -> StdResult<Response> {
     COUNTER.save(deps.storage, &counter)?;
+    MINIMAL_DONATION.save(deps.storage, &minimal_donation)?;
     Ok(Response::new())
 }
 
@@ -25,15 +26,22 @@ pub mod query {
 
 pub mod exec {
     use cosmwasm_std::{DepsMut, MessageInfo, Response, StdResult};
-    use crate::state::COUNTER;
+    use crate::state::{COUNTER, MINIMAL_DONATION};
 
-    pub fn poke(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
+    pub fn donate(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
         /* // Use update function or split it in load and save
          COUNTER.update(deps.storage, |counter| -> StdResult<_> { Ok(counter + 1)})?;
          Ok(Response::new())
         */
-        let counter = COUNTER.load(deps.storage)? + 1;
-        COUNTER.save(deps.storage, &counter)?;
+        let mut counter = COUNTER.load(deps.storage)?;
+        let minimal_donation = MINIMAL_DONATION.load(deps.storage)?;
+
+        if minimal_donation.amount.is_zero() || info.funds.iter().any(|coin| {
+            coin.denom == minimal_donation.denom && coin.amount >= minimal_donation.amount
+        }){
+            counter += 1;
+            COUNTER.save(deps.storage, &counter)?;
+        }
 
         let resp = Response::new()
             .add_attribute("action", "poke")
@@ -43,12 +51,12 @@ pub mod exec {
         Ok(resp)
     }
 
-    pub fn reset(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
-        COUNTER.save(deps.storage, &0)?;
+    pub fn reset(deps: DepsMut, info: MessageInfo, counter: u64) -> StdResult<Response> {
+        COUNTER.save(deps.storage, &counter)?;
         let counter = COUNTER.load(deps.storage)?;
 
         let resp = Response::new()
-            .add_attribute("action", "poke")
+            .add_attribute("action", "reset")
             .add_attribute("sender", info.sender.as_str())
             .add_attribute("counter", counter.to_string());
 

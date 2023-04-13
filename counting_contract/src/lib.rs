@@ -14,7 +14,7 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response>{
-    contract::instantiate(deps, msg.counter)
+    contract::instantiate(deps, msg.counter, msg.minimal_donation)
 }
 
 
@@ -29,8 +29,8 @@ pub fn execute(
     use crate::contract::exec;
 
     match  msg {
-        Poke {} => exec::poke(deps, info),
-        Reset {} => exec::reset(deps, info)
+        Donate {} => exec::donate(deps, info),
+        Reset { counter } => exec::reset(deps, info, counter)
     }
 }
 
@@ -51,7 +51,7 @@ pub fn query(
 
 #[cfg(test)]
 mod test {
-    use cosmwasm_std::{Empty, Addr, entry_point};
+    use cosmwasm_std::{Empty, Addr, entry_point, coin, coins};
     use cw_multi_test::{App, ContractWrapper, Contract, Executor};
     use crate::{execute, instantiate, query};
     use crate::msg::{ExecMsg, InstantiateMsg, QueryMsg, ValueResp};
@@ -69,7 +69,7 @@ mod test {
         let contract_addr = app.instantiate_contract(
             contract_id,
             Addr::unchecked("sender"), // create and address without validating it
-            &InstantiateMsg { counter: 1 },
+            &InstantiateMsg { counter: 1, minimal_donation: coin(10, "atom") },
             &[],
             "Counting contract",
             None, // admin
@@ -92,7 +92,7 @@ mod test {
         let contract_addr = app.instantiate_contract(
             contract_id,
             Addr::unchecked("sender"), // create and address without validating it
-            &InstantiateMsg { counter: 1 },
+            &InstantiateMsg { counter: 1 , minimal_donation: coin(10, "atom") },
             &[],
             "Counting contract",
             None, // admin
@@ -107,7 +107,7 @@ mod test {
     }
 
     #[test]
-    fn poke() {
+    fn donate() {
         let mut app = App::default();
 
         let contract_id = app.store_code(counting_contract());
@@ -116,7 +116,7 @@ mod test {
             .instantiate_contract(
                 contract_id,
                 Addr::unchecked("sender"),
-                &InstantiateMsg{ counter: 0 },
+                &InstantiateMsg{ counter: 0, minimal_donation: coin(10, "atom") },
                 &[],
                 "Counting contract",
                 None, // admin
@@ -126,7 +126,77 @@ mod test {
         app.execute_contract(
             Addr::unchecked("sender"),
             contract_addr.clone(), // clone here so that it can be used below
-            &ExecMsg::Poke {},
+            &ExecMsg::Donate {},
+            &[],
+        ).unwrap();
+
+        let resp: ValueResp = app
+            .wrap()
+            .query_wasm_smart(contract_addr, &QueryMsg::Value {})
+            .unwrap();
+
+        assert_eq!(resp, ValueResp { value: 0 });
+    }
+
+    #[test]
+    fn donate_with_funds() {
+        let sender = Addr::unchecked("sender");
+        let mut app = App::new(|router, _api, storage|{
+            router
+                .bank
+                .init_balance(storage, &sender, coins(10, "atom"))
+                .unwrap();
+        });
+
+        let contract_id = app.store_code(counting_contract());
+
+        let contract_addr = app
+            .instantiate_contract(
+                contract_id,
+                Addr::unchecked("sender"),
+                &InstantiateMsg{ counter: 0, minimal_donation: coin(10, "atom") },
+                &[],
+                "Counting contract",
+                None, // admin
+            )
+            .unwrap();
+
+        app.execute_contract(
+            Addr::unchecked("sender"),
+            contract_addr.clone(), // clone here so that it can be used below
+            &ExecMsg::Donate {},
+            &coins(10, "atom"),
+        ).unwrap();
+
+        let resp: ValueResp = app
+            .wrap()
+            .query_wasm_smart(contract_addr, &QueryMsg::Value {})
+            .unwrap();
+
+        assert_eq!(resp, ValueResp { value: 1 });
+    }
+
+    #[test]
+    fn expecting_no_funds() {
+        let mut app = App::default();
+
+        let contract_id = app.store_code(counting_contract());
+
+        let contract_addr = app
+            .instantiate_contract(
+                contract_id,
+                Addr::unchecked("sender"),
+                &InstantiateMsg{ counter: 0, minimal_donation: coin(0, "atom") },
+                &[],
+                "Counting contract",
+                None, // admin
+            )
+            .unwrap();
+
+        app.execute_contract(
+            Addr::unchecked("sender"),
+            contract_addr.clone(), // clone here so that it can be used below
+            &ExecMsg::Donate {},
             &[],
         ).unwrap();
 
@@ -147,31 +217,31 @@ mod test {
             .instantiate_contract(
                 contract_id,
                 Addr::unchecked("sender"),
-                &InstantiateMsg{ counter: 0 },
+                &InstantiateMsg{ counter: 0, minimal_donation: coin(10, "atom"), },
                 &[],
                 "Counting contract",
                 None, // admin
             )
             .unwrap();
 
+        // app.execute_contract(
+        //     Addr::unchecked("sender"),
+        //     contract_addr.clone(), // clone here so that it can be used below
+        //     &ExecMsg::Poke {},
+        //     &[],
+        // ).unwrap();
+        //
+        // let poke_resp: ValueResp = app
+        //     .wrap()
+        //     .query_wasm_smart(contract_addr.clone(), &QueryMsg::Value {})
+        //     .unwrap();
+        //
+        // assert_eq!(poke_resp, ValueResp { value: 1 });
+
         app.execute_contract(
             Addr::unchecked("sender"),
             contract_addr.clone(), // clone here so that it can be used below
-            &ExecMsg::Poke {},
-            &[],
-        ).unwrap();
-
-        let poke_resp: ValueResp = app
-            .wrap()
-            .query_wasm_smart(contract_addr.clone(), &QueryMsg::Value {})
-            .unwrap();
-
-        assert_eq!(poke_resp, ValueResp { value: 1 });
-
-        app.execute_contract(
-            Addr::unchecked("sender"),
-            contract_addr.clone(), // clone here so that it can be used below
-            &ExecMsg::Reset {},
+            &ExecMsg::Reset { counter: 10 },
             &[],
         ).unwrap();
 
@@ -180,7 +250,7 @@ mod test {
             .query_wasm_smart(contract_addr, &QueryMsg::Value {})
             .unwrap();
 
-        assert_eq!(resp, ValueResp { value: 0 });
+        assert_eq!(resp, ValueResp { value: 10 });
     }
 }
 
