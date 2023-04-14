@@ -17,15 +17,10 @@ pub mod query {
        let value = COUNTER.load(deps.storage)?;
         Ok(ValueResp{ value })
    }
-
-    pub fn incremented(value: u64) -> ValueResp {
-        ValueResp{ value: value + 1}
-    }
-
 }
 
 pub mod exec {
-    use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128};
+    use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
     use crate::error::ContractError;
     use crate::state::{COUNTER, MINIMAL_DONATION, OWNER};
 

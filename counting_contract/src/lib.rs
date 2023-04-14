@@ -50,7 +50,6 @@ pub fn query(
 
     match msg {
         Value {} => to_binary(&query::value(deps)?),
-        Incremented { value } => to_binary(&query::incremented(value))
     }
 }
 
@@ -89,28 +88,6 @@ mod test {
         assert_eq!(resp, ValueResp { value: 1 });
     }
 
-    #[test]
-    fn increment(){
-        let mut app = App::default();
-
-        let contract_id = app.store_code(counting_contract());
-
-        let contract_addr = app.instantiate_contract(
-            contract_id,
-            Addr::unchecked("sender"), // create and address without validating it
-            &InstantiateMsg { counter: 1 , minimal_donation: coin(10, "atom") },
-            &[],
-            "Counting contract",
-            None, // admin
-        ).unwrap();
-
-        let resp: ValueResp = app
-            .wrap() // convert app to QuerierWrapper
-            .query_wasm_smart(contract_addr, &QueryMsg::Incremented { value: 1 })
-            .unwrap();
-
-        assert_eq!(resp, ValueResp { value: 2 });
-    }
 
     #[test]
     fn donate() {
