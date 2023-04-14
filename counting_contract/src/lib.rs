@@ -8,6 +8,9 @@ pub mod msg;
 mod state;
 mod error;
 
+#[cfg(test)]
+mod multitest;
+
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
@@ -122,44 +125,6 @@ mod test {
     }
 
     #[test]
-    fn donate_with_funds() {
-        let sender = Addr::unchecked("sender");
-        let mut app = App::new(|router, _api, storage|{
-            router
-                .bank
-                .init_balance(storage, &sender, coins(10, "atom"))
-                .unwrap();
-        });
-
-        let contract_id = app.store_code(counting_contract());
-
-        let contract_addr = app
-            .instantiate_contract(
-                contract_id,
-                Addr::unchecked("sender"),
-                &InstantiateMsg{ counter: 0, minimal_donation: coin(10, "atom") },
-                &[],
-                "Counting contract",
-                None, // admin
-            )
-            .unwrap();
-
-        app.execute_contract(
-            Addr::unchecked("sender"),
-            contract_addr.clone(), // clone here so that it can be used below
-            &ExecMsg::Donate {},
-            &coins(10, "atom"),
-        ).unwrap();
-
-        let resp: ValueResp = app
-            .wrap()
-            .query_wasm_smart(contract_addr, &QueryMsg::Value {})
-            .unwrap();
-
-        assert_eq!(resp, ValueResp { value: 1 });
-    }
-
-    #[test]
     fn expecting_no_funds() {
         let mut app = App::default();
 
@@ -206,20 +171,6 @@ mod test {
                 None, // admin
             )
             .unwrap();
-
-        // app.execute_contract(
-        //     Addr::unchecked("sender"),
-        //     contract_addr.clone(), // clone here so that it can be used below
-        //     &ExecMsg::Poke {},
-        //     &[],
-        // ).unwrap();
-        //
-        // let poke_resp: ValueResp = app
-        //     .wrap()
-        //     .query_wasm_smart(contract_addr.clone(), &QueryMsg::Value {})
-        //     .unwrap();
-        //
-        // assert_eq!(poke_resp, ValueResp { value: 1 });
 
         app.execute_contract(
             Addr::unchecked("sender"),
