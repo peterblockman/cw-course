@@ -1,4 +1,4 @@
-use cosmwasm_std::Coin;
+use cosmwasm_std::{Coin};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -31,5 +31,10 @@ pub enum ExecMsg {
         #[serde(default)]
         counter: u64,
     },
+    Withdraw {},
+    WithdrawTo {
+        receiver: String,
+        funds: Vec<Coin>
+    }
 }
 
