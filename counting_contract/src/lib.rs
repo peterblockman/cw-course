@@ -1,4 +1,7 @@
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdResult, entry_point, Deps, Binary, to_binary};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdResult, Deps, Binary, to_binary};
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+
 use crate::error::ContractError;
 use crate::msg::{ExecMsg, InstantiateMsg};
 
@@ -11,7 +14,7 @@ mod error;
 #[cfg(test)]
 mod multitest;
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -22,7 +25,7 @@ pub fn instantiate(
 }
 
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -42,7 +45,7 @@ pub fn execute(
     }
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(
     deps: Deps,
     _env: Env,
