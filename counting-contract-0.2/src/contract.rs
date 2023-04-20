@@ -1,4 +1,4 @@
-use cosmwasm_std::{Coin, DepsMut, MessageInfo, Response, StdResult};
+use cosmwasm_std::{Addr, Coin, DepsMut, MessageInfo, Response, StdResult};
 use cw_storage_plus::Item;
 use crate::state::{OWNER, STATE, State};
 
@@ -8,24 +8,27 @@ pub fn instantiate (deps: DepsMut, info: MessageInfo, counter: u64, minimal_dona
         &State {
             counter,
             minimal_donation,
+            owner: info.sender
         },
     )?;
-    OWNER.save(deps.storage, &info.sender)?;
     Ok(Response::new())
 }
 
 pub fn migrate(deps: DepsMut) -> StdResult<Response> {
     const COUNTER: Item<u64> = Item::new("counter");
     const MINIMAL_DONATION: Item<Coin> = Item::new("minimal_donation");
+    const OWNER: Item<Addr> = Item::new("owner");
 
     let counter = COUNTER.load(deps.storage)?;
     let minimal_donation = MINIMAL_DONATION.load(deps.storage)?;
+    let owner = STATE.load(deps.storage)?.owner;
 
     STATE.save(
         deps.storage,
         &State {
             counter,
             minimal_donation,
+            owner
         },
     )?;
 
@@ -67,7 +70,7 @@ pub mod exec {
     }
 
     pub fn reset(deps: DepsMut, info: MessageInfo, counter: u64) -> Result<Response, ContractError> {
-        let owner = OWNER.load(deps.storage)?;
+        let owner = STATE.load(deps.storage)?.owner;
 
         if info.sender != owner {
             return Err(ContractError::Unauthorized {
@@ -88,7 +91,7 @@ pub mod exec {
     }
 
     pub fn withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
-        let owner = OWNER.load(deps.storage)?;
+        let owner = STATE.load(deps.storage)?.owner;
         if info.sender != owner {
             return Err(ContractError::Unauthorized {
                 owner: owner.to_string()
@@ -110,7 +113,7 @@ pub mod exec {
     }
 
     pub fn withdraw_to(deps: DepsMut, env: Env, info: MessageInfo, receiver: String, funds: Vec<Coin>) -> Result<Response, ContractError> {
-        let owner = OWNER.load(deps.storage)?;
+        let owner = STATE.load(deps.storage)?.owner;
         if info.sender != owner {
             return Err(ContractError::Unauthorized {
                 owner: owner.to_string()

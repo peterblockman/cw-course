@@ -8,11 +8,11 @@ use crate::msg::{ExecMsg, InstantiateMsg};
 
 mod contract;
 pub mod msg;
+#[cfg(any(test, feature = "tests"))]
+pub mod multitest;
 mod state;
 mod error;
 
-#[cfg(any(test, feature = "tests"))]
-pub mod multitest;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
