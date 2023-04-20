@@ -1,4 +1,4 @@
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdResult, Deps, Binary, to_binary};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdResult, Deps, Binary, to_binary, Empty};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
@@ -59,3 +59,7 @@ pub fn query(
     }
 }
 
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: Empty) -> StdResult<Response> {
+    Ok(Response::new())
+}

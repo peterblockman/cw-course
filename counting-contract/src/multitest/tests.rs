@@ -24,6 +24,7 @@ fn donate() { // no funds
         code_id,
         &owner,
         "Counting contract",
+        None,
         0,
         coin(5, "atom"),
     )
@@ -59,6 +60,7 @@ fn donate_with_funds() {
         &owner,
         "Counting contract",
         None,
+        0,
         coin(10, "atom"),
     )
         .unwrap();
@@ -87,6 +89,7 @@ fn expecting_no_funds() {
         &owner,
         "Counting contract",
         None,
+        0,
         coin(0, ATOM)
     )
         .unwrap();
@@ -111,6 +114,7 @@ fn reset(){
         &owner,
         "Counting contract",
         None,
+        0,
         coin(10, ATOM)
     )
     .unwrap();
@@ -142,6 +146,7 @@ fn withdraw() {
         &owner,
         "Counting contract",
         None,
+        0,
         coin(10, ATOM),
     )
         .unwrap();
@@ -194,6 +199,7 @@ fn withdraw_to() {
         &owner,
         "Counting contract",
         None,
+        0,
         coin(10, ATOM),
     )
         .unwrap();
@@ -232,6 +238,7 @@ fn unauthorized_withdraw() {
         &owner,
         "Counting contract",
         None,
+        0,
         coin(10, ATOM),
     )
         .unwrap();
@@ -259,6 +266,7 @@ fn unauthorized_withdraw_to() {
         &owner,
         "Counting contract",
         None,
+        0,
         coin(10, ATOM),
     )
         .unwrap();
@@ -288,6 +296,7 @@ fn unauthorized_reset() {
         &owner,
         "Counting contract",
         None,
+        0,
         coin(10, ATOM),
     )
         .unwrap();
