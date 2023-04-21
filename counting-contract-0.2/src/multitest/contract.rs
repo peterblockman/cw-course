@@ -1,11 +1,11 @@
 use cosmwasm_std::{Addr, Coin, Empty, StdResult};
 use cw_multi_test::{App, ContractWrapper, Executor};
-use crate::{execute, instantiate, migrate, query};
+
 use crate::error::ContractError;
 use crate::msg::{ExecMsg, InstantiateMsg, QueryMsg, ValueResp};
+use crate::{execute, instantiate, migrate, query};
 
-pub struct CountingContract(Addr); // new type represent the address
-
+pub struct CountingContract(Addr);
 
 impl CountingContract {
     pub fn addr(&self) -> &Addr {
@@ -28,7 +28,6 @@ impl CountingContract {
         minimal_donation: Coin,
     ) -> StdResult<Self> {
         let admin = admin.into();
-
         let counter = counter.into().unwrap_or_default();
 
         app.instantiate_contract(
@@ -42,8 +41,15 @@ impl CountingContract {
             label,
             admin.map(Addr::to_string),
         )
-            .map(CountingContract) // covert InstantiateResult to CountingContract
+            .map(CountingContract)
             .map_err(|err| err.downcast().unwrap())
+    }
+
+    #[track_caller]
+    pub fn migrate(app: &mut App, contract: Addr, code_id: u64, sender: &Addr) -> StdResult<Self> {
+        app.migrate_contract(sender.clone(), contract.clone(), &Empty {}, code_id)
+            .map_err(|err| err.downcast().unwrap())
+            .map(|_| Self(contract))
     }
 
     #[track_caller]
@@ -53,12 +59,7 @@ impl CountingContract {
         sender: &Addr,
         funds: &[Coin],
     ) -> Result<(), ContractError> {
-        app.execute_contract(
-            sender.clone(),
-            self.0.clone(),
-            &ExecMsg::Donate {},
-            funds
-        )
+        app.execute_contract(sender.clone(), self.0.clone(), &ExecMsg::Donate {}, funds)
             .map_err(|err| err.downcast().unwrap())
             .map(|_| ())
     }
@@ -110,22 +111,12 @@ impl CountingContract {
             .map(|_| ())
     }
 
-
     #[track_caller]
     pub fn query_value(&self, app: &App) -> StdResult<ValueResp> {
         app.wrap()
             .query_wasm_smart(self.0.clone(), &QueryMsg::Value {})
     }
-
-    #[track_caller]
-    pub fn migrate(app: &mut App, contract: Addr, code_id: u64, sender: &Addr) -> StdResult<Self> {
-        app.migrate_contract(sender.clone(), contract.clone(), &Empty {}, code_id)
-            .map_err(|err| err.downcast().unwrap())
-            .map(|_| Self(contract))
-    }
 }
-
-
 
 impl From<CountingContract> for Addr {
     fn from(contract: CountingContract) -> Self {

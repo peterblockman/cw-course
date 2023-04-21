@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Coin;
 
-#[cw_serde] // = #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     #[serde(default)]
     pub counter: u64,
@@ -9,21 +9,15 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
-#[derive(QueryResponses)] // only for query
+#[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(ValueResp)]
     Value {},
 }
 
-
-#[cw_serde]
-pub struct ValueResp {
-    pub value: u64,
-}
-
 #[cw_serde]
 pub enum ExecMsg {
-    Donate{},
+    Donate {},
     Reset {
         #[serde(default)]
         counter: u64,
@@ -31,7 +25,12 @@ pub enum ExecMsg {
     Withdraw {},
     WithdrawTo {
         receiver: String,
-        funds: Vec<Coin>
-    }
+        #[serde(default)]
+        funds: Vec<Coin>,
+    },
 }
 
+#[cw_serde]
+pub struct ValueResp {
+    pub value: u64,
+}

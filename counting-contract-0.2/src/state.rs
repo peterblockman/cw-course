@@ -10,4 +10,3 @@ pub struct State {
 }
 
 pub const STATE: Item<State> = Item::new("state");
-pub const OWNER: Item<Addr> = Item::new("owner");

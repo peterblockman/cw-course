@@ -1,28 +1,45 @@
-use cosmwasm_std::{Addr, coin, coins};
+use cosmwasm_std::{coin, coins, Addr};
 use cw_multi_test::App;
+
 use crate::error::ContractError;
 use crate::msg::ValueResp;
-use crate::multitest::contract::CountingContract;
-use crate::state::{STATE, State};
+use crate::state::{State, STATE};
+
+use super::contract::CountingContract;
 use counting_contract_0_1::multitest::contract::CountingContract as CountingContract_0_1;
 
 const ATOM: &str = "atom";
 
 #[test]
-fn donate() { // no funds
+fn query_value() {
+    let owner = Addr::unchecked("owner");
+
+    let mut app = App::default();
+
+    let code_id = CountingContract::store_code(&mut app);
+    let contract = CountingContract::instantiate(
+        &mut app,
+        code_id,
+        &owner,
+        "Counting contract",
+        None,
+        10,
+        coin(10, ATOM),
+    )
+        .unwrap();
+
+    let resp = contract.query_value(&app).unwrap();
+    assert_eq!(resp, ValueResp { value: 10 });
+}
+
+#[test]
+fn donate() {
     let owner = Addr::unchecked("owner");
     let sender = Addr::unchecked("sender");
 
-    let mut app = App::new(|router, _api, storage| {
-        router
-            .bank
-            .init_balance(storage, &sender, coins(10, ATOM))
-            .unwrap();
-    });
-    // or we can declare the app this way let mut app = App::default();
+    let mut app = App::default();
 
     let code_id = CountingContract::store_code(&mut app);
-
     let contract = CountingContract::instantiate(
         &mut app,
         code_id,
@@ -34,15 +51,11 @@ fn donate() { // no funds
     )
         .unwrap();
 
-    contract
-        .donate(&mut app, &sender, &[])
-        .unwrap();
+    contract.donate(&mut app, &sender, &[]).unwrap();
 
     let resp = contract.query_value(&app).unwrap();
-
     assert_eq!(resp, ValueResp { value: 0 });
 }
-
 
 #[test]
 fn donate_with_funds() {
@@ -57,25 +70,23 @@ fn donate_with_funds() {
     });
 
     let code_id = CountingContract::store_code(&mut app);
-
     let contract = CountingContract::instantiate(
         &mut app,
         code_id,
         &owner,
         "Counting contract",
         None,
-        0,
-        coin(10, "atom"),
+        None,
+        coin(10, ATOM),
     )
         .unwrap();
 
     contract
-        .donate(&mut app, &sender, &coins(10, "atom"))
+        .donate(&mut app, &sender, &coins(10, ATOM))
         .unwrap();
 
     let resp = contract.query_value(&app).unwrap();
-
-    assert_eq!(resp, ValueResp { value: 1});
+    assert_eq!(resp, ValueResp { value: 1 });
 }
 
 #[test]
@@ -86,50 +97,46 @@ fn expecting_no_funds() {
     let mut app = App::default();
 
     let code_id = CountingContract::store_code(&mut app);
-
     let contract = CountingContract::instantiate(
         &mut app,
         code_id,
         &owner,
         "Counting contract",
         None,
-        0,
-        coin(0, ATOM)
+        None,
+        coin(0, ATOM),
     )
         .unwrap();
 
     contract.donate(&mut app, &sender, &[]).unwrap();
 
     let resp = contract.query_value(&app).unwrap();
-    assert_eq!(resp, ValueResp{ value: 1});
+    assert_eq!(resp, ValueResp { value: 1 });
 }
 
 #[test]
-fn reset(){
+fn reset() {
     let owner = Addr::unchecked("owner");
 
     let mut app = App::default();
 
     let code_id = CountingContract::store_code(&mut app);
-
     let contract = CountingContract::instantiate(
         &mut app,
         code_id,
         &owner,
         "Counting contract",
         None,
-        0,
-        coin(10, ATOM)
+        None,
+        coin(10, ATOM),
     )
-    .unwrap();
+        .unwrap();
 
     contract.reset(&mut app, &owner, 10).unwrap();
 
     let resp = contract.query_value(&app).unwrap();
-
-    assert_eq!(resp, ValueResp{ value: 10});
+    assert_eq!(resp, ValueResp { value: 10 });
 }
-
 
 #[test]
 fn withdraw() {
@@ -139,7 +146,7 @@ fn withdraw() {
     let mut app = App::new(|router, _api, storage| {
         router
             .bank
-            .init_balance(storage, &sender, coins(20, ATOM))
+            .init_balance(storage, &sender, coins(10, "atom"))
             .unwrap();
     });
 
@@ -150,36 +157,25 @@ fn withdraw() {
         &owner,
         "Counting contract",
         None,
-        0,
+        None,
         coin(10, ATOM),
     )
         .unwrap();
 
     contract
-        .donate(&mut app, &sender, &coins(20, ATOM))
+        .donate(&mut app, &sender, &coins(10, ATOM))
         .unwrap();
-
-    assert_eq!(
-        app.wrap().query_all_balances(contract.addr()).unwrap(),
-        coins(20, "atom")
-    );
-
-    assert_eq!(
-        app.wrap().query_all_balances(sender).unwrap(),
-        vec![]
-    );
-
-    assert_eq!(
-        app.wrap().query_all_balances(&owner).unwrap(),
-        vec![]
-    );
 
     contract.withdraw(&mut app, &owner).unwrap();
 
-
     assert_eq!(
-        app.wrap().query_all_balances(&owner).unwrap(),
-        coins(20, "atom")
+        app.wrap().query_all_balances(owner).unwrap(),
+        coins(10, "atom")
+    );
+    assert_eq!(app.wrap().query_all_balances(sender).unwrap(), vec![]);
+    assert_eq!(
+        app.wrap().query_all_balances(contract.addr()).unwrap(),
+        vec![]
     );
 }
 
@@ -203,7 +199,7 @@ fn withdraw_to() {
         &owner,
         "Counting contract",
         None,
-        0,
+        None,
         coin(10, ATOM),
     )
         .unwrap();
@@ -242,7 +238,7 @@ fn unauthorized_withdraw() {
         &owner,
         "Counting contract",
         None,
-        0,
+        None,
         coin(10, ATOM),
     )
         .unwrap();
@@ -270,7 +266,7 @@ fn unauthorized_withdraw_to() {
         &owner,
         "Counting contract",
         None,
-        0,
+        None,
         coin(10, ATOM),
     )
         .unwrap();
@@ -300,7 +296,7 @@ fn unauthorized_reset() {
         &owner,
         "Counting contract",
         None,
-        0,
+        None,
         coin(10, ATOM),
     )
         .unwrap();
@@ -314,50 +310,96 @@ fn unauthorized_reset() {
     );
 }
 
-//
-// #[test]
-// fn migration() {
-//     let admin = Addr::unchecked("admin");
-//     let owner = Addr::unchecked("owner");
-//     let sender = Addr::unchecked("sender");
-//
-//     let mut app = App::new(|router, _api, storage| {
-//         router
-//             .bank
-//             .init_balance(storage, &sender, coins(10, "atom"))
-//             .unwrap();
-//     });
-//
-//     let old_code_id = CountingContract_0_1::store_code(&mut app);
-//     let new_code_id = CountingContract::store_code(&mut app);
-//
-//     let contract = CountingContract_0_1::instantiate(
-//         &mut app,
-//         old_code_id,
-//         &owner,
-//         "Counting contract",
-//         &admin,
-//         None,
-//         coin(10, ATOM),
-//     )
-//         .unwrap();
-//
-//     contract
-//         .donate(&mut app, &sender, &coins(10, ATOM))
-//         .unwrap();
-//
-//     let contract =
-//         CountingContract::migrate(&mut app, contract.into(), new_code_id, &admin).unwrap();
-//
-//     let resp = contract.query_value(&app).unwrap();
-//     assert_eq!(resp, ValueResp { value: 1 });
-//
-//     let state = STATE.query(&app.wrap(), contract.addr().clone()).unwrap();
-//     assert_eq!(
-//         state,
-//         State {
-//             counter: 1,
-//             minimal_donation: coin(10, ATOM)
-//         }
-//     );
-// }
+#[test]
+fn migration() {
+    let admin = Addr::unchecked("admin");
+    let owner = Addr::unchecked("owner");
+    let sender = Addr::unchecked("sender");
+
+    let mut app = App::new(|router, _api, storage| {
+        router
+            .bank
+            .init_balance(storage, &sender, coins(10, "atom"))
+            .unwrap();
+    });
+
+    let old_code_id = CountingContract_0_1::store_code(&mut app);
+    let new_code_id = CountingContract::store_code(&mut app);
+
+    let contract = CountingContract_0_1::instantiate(
+        &mut app,
+        old_code_id,
+        &owner,
+        "Counting contract",
+        &admin,
+        None,
+        coin(10, ATOM),
+    )
+        .unwrap();
+
+    contract
+        .donate(&mut app, &sender, &coins(10, ATOM))
+        .unwrap();
+
+    let contract =
+        CountingContract::migrate(&mut app, contract.into(), new_code_id, &admin).unwrap();
+
+    let resp = contract.query_value(&app).unwrap();
+    assert_eq!(resp, ValueResp { value: 1 });
+
+    let state = STATE.query(&app.wrap(), contract.addr().clone()).unwrap();
+    assert_eq!(
+        state,
+        State {
+            counter: 1,
+            minimal_donation: coin(10, ATOM),
+            owner,
+        }
+    );
+}
+
+#[test]
+fn migration_same_version() {
+    let admin = Addr::unchecked("admin");
+    let owner = Addr::unchecked("owner");
+    let sender = Addr::unchecked("sender");
+
+    let mut app = App::new(|router, _api, storage| {
+        router
+            .bank
+            .init_balance(storage, &sender, coins(10, "atom"))
+            .unwrap();
+    });
+
+    let code_id = CountingContract::store_code(&mut app);
+
+    let contract = CountingContract::instantiate(
+        &mut app,
+        code_id,
+        &owner,
+        "Counting contract",
+        &admin,
+        None,
+        coin(10, ATOM),
+    )
+        .unwrap();
+
+    contract
+        .donate(&mut app, &sender, &coins(10, ATOM))
+        .unwrap();
+
+    let contract = CountingContract::migrate(&mut app, contract.into(), code_id, &admin).unwrap();
+
+    let resp = contract.query_value(&app).unwrap();
+    assert_eq!(resp, ValueResp { value: 1 });
+
+    let state = STATE.query(&app.wrap(), contract.addr().clone()).unwrap();
+    assert_eq!(
+        state,
+        State {
+            counter: 1,
+            minimal_donation: coin(10, ATOM),
+            owner,
+        }
+    );
+}

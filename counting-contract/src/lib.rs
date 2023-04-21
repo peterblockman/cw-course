@@ -5,9 +5,9 @@ use cosmwasm_std::entry_point;
 use crate::error::ContractError;
 use crate::msg::{ExecMsg, InstantiateMsg};
 
-
 mod contract;
 pub mod msg;
+
 #[cfg(any(test, feature = "tests"))]
 pub mod multitest;
 mod state;
